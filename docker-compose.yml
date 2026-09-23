@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: job_application_mcp
+      POSTGRES_PASSWORD: dev_only_password
+      POSTGRES_DB: job_application_mcp
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U job_application_mcp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: development
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://job_application_mcp:dev_only_password@db:5432/job_application_mcp
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8000
+      # Replace with your own token; never commit a real one.
+      MCP_AUTH_TOKENS: dev-local-token-change-me
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/uploads
+
+volumes:
+  pgdata:
+  uploads:
