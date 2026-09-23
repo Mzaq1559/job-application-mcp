@@ -11,4 +11,7 @@ mcp = FastMCP(
     "Job Application MCP",
     stateless_http=True,
     json_response=True,
+    # Served bare ("/") because server.py mounts this whole ASGI app under
+    # "/mcp" itself — without this it would double up as /mcp/mcp.
+    streamable_http_path="/",
 )
