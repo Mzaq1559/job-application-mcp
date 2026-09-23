@@ -55,9 +55,24 @@ class Auth0TokenVerifier(TokenVerifier):
             claims = jwt.decode(token, key=key, algorithms=["RS256"], audience=self.audience, issuer=self.issuer_url, options={"require": ["exp", "iat", "sub"]})
             scope_claim = claims.get("scope", "")
             scopes = scope_claim.split() if isinstance(scope_claim, str) else []
-            return AccessToken(token=token, client_id=str(claims.get("azp") or claims.get("client_id") or ""), scopes=scopes, expires_at=int(claims["exp"]), resource=self.audience, subject=str(claims["sub"]), claims=claims)
+            return AccessToken(
+                token=token,
+                client_id=str(
+                    claims.get("azp") or claims.get("client_id") or ""
+                ),
+                scopes=scopes,
+                expires_at=int(claims["exp"]),
+                resource=self.audience,
+                subject=str(claims["sub"]),
+                claims=claims,
+            )
         except (jwt.InvalidTokenError, ValueError, KeyError, TypeError, httpx.HTTPError):
             return None
 
 def build_auth_settings(*, issuer_url: str, resource_url: str, required_scope: str) -> AuthSettings:
-    return AuthSettings(issuer_url=AnyHttpUrl(issuer_url), resource_server_url=AnyHttpUrl(resource_url), required_scopes=[required_scope], validate_token_resource=True)
+    return AuthSettings(
+        issuer_url=AnyHttpUrl(issuer_url),
+        resource_server_url=AnyHttpUrl(resource_url),
+        required_scopes=[required_scope],
+        validate_token_resource=True,
+    )
