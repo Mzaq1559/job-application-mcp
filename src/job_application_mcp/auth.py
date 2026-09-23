@@ -60,4 +60,4 @@ class Auth0TokenVerifier(TokenVerifier):
             return None
 
 def build_auth_settings(*, issuer_url: str, resource_url: str, required_scope: str) -> AuthSettings:
-    return AuthSettings(issuer_url=AnyHttpUrl(issuer_url), resource_server_url=AnyHttpUrl(resource_url), required_scopes=[required_scope], validate_token_resource=False)
+    return AuthSettings(issuer_url=AnyHttpUrl(issuer_url), resource_server_url=AnyHttpUrl(resource_url), required_scopes=[required_scope], validate_token_resource=True)
