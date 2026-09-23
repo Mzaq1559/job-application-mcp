@@ -69,9 +69,11 @@ async def update_profile(session: AsyncSession, data: ProfileIn) -> ProfileOut:
         if field in simple_fields:
             setattr(profile, field, value)
         elif field in json_fields:
-            serializable = [
-                item.model_dump() if hasattr(item, "model_dump") else item for item in value
-            ] if isinstance(value, list) else value
+            serializable = (
+                [item.model_dump() if hasattr(item, "model_dump") else item for item in value]
+                if isinstance(value, list)
+                else value
+            )
             setattr(profile, field, json.dumps(serializable))
 
     await session.flush()
@@ -86,9 +88,11 @@ async def profile_summary(session: AsyncSession) -> str:
         parts.append(profile.name)
     if profile.education:
         latest = profile.education[0]
-        degree_bits = " ".join(
-            b for b in [latest.degree, "in", latest.field_of_study] if b
-        ) if latest.field_of_study else (latest.degree or "")
+        degree_bits = (
+            " ".join(b for b in [latest.degree, "in", latest.field_of_study] if b)
+            if latest.field_of_study
+            else (latest.degree or "")
+        )
         if degree_bits:
             parts.append(f"{degree_bits} at {latest.institution}".strip())
     if profile.skills:
