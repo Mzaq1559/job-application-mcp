@@ -17,4 +17,3 @@ exports/
 .env
 .env.*
 !.env.example
-README.md
