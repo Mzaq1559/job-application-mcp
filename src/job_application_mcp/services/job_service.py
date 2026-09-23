@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,6 +96,6 @@ async def update_job_status(session: AsyncSession, job_id: str, status: str) -> 
     if job is None:
         raise ValueError(f"Job {job_id} does not exist.")
     job.status = status
-    job.updated_at = datetime.utcnow()
+    job.updated_at = datetime.now(UTC)
     await session.flush()
     return job

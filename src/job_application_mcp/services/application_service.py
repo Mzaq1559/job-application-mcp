@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,8 +22,15 @@ VALID_TRANSITIONS: dict[str, set[str]] = {
 }
 
 
-async def _log_event(session: AsyncSession, application_id: str, event_type: str, description: str | None = None) -> None:
-    session.add(ApplicationEvent(application_id=application_id, event_type=event_type, description=description))
+async def _log_event(
+    session: AsyncSession,
+    application_id: str,
+    event_type: str,
+    description: str | None = None,
+) -> None:
+    session.add(
+        ApplicationEvent(application_id=application_id, event_type=event_type, description=description)
+    )
 
 
 async def create_application(
@@ -67,7 +74,9 @@ async def list_applications(
     return list(result.scalars().all())
 
 
-async def update_application_status(session: AsyncSession, application_id: str, new_status: str) -> Application:
+async def update_application_status(
+    session: AsyncSession, application_id: str, new_status: str
+) -> Application:
     application = await session.get(Application, application_id)
     if application is None:
         raise ValueError(f"Application {application_id} does not exist.")
@@ -84,7 +93,7 @@ async def update_application_status(session: AsyncSession, application_id: str, 
     if new_status == "applied":
         # Only ever set by an explicit user confirmation — see application tools layer.
         application.submission_method = "manual"
-        application.submitted_at = datetime.utcnow()
+        application.submitted_at = datetime.now(UTC)
 
     await session.flush()
     await _log_event(session, application.id, "status_changed", f"{old_status} -> {new_status}")

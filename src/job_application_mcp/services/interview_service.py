@@ -21,7 +21,9 @@ async def list_interviews(session: AsyncSession, *, application_id: str | None =
     return list(result.scalars().all())
 
 
-async def add_interview_note(session: AsyncSession, *, interview_id: str, note_type: str, content: str) -> InterviewNote:
+async def add_interview_note(
+    session: AsyncSession, *, interview_id: str, note_type: str, content: str
+) -> InterviewNote:
     note = InterviewNote(interview_id=interview_id, note_type=note_type, content=content)
     session.add(note)
     await session.flush()

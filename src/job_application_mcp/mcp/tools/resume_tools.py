@@ -97,7 +97,13 @@ async def resume_upload(
 
 
 @mcp.tool()
-async def resume_update(resume_id: str, name: str | None = None, resume_type: str | None = None, description: str | None = None, is_active: bool | None = None) -> dict:
+async def resume_update(
+    resume_id: str,
+    name: str | None = None,
+    resume_type: str | None = None,
+    description: str | None = None,
+    is_active: bool | None = None,
+) -> dict:
     """Update a resume's metadata (not its file content — use resume_upload for a new version)."""
     async with session_scope() as session:
         resume = await resume_service.get_resume(session, resume_id)
