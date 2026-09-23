@@ -1,6 +1,7 @@
 """Remote MCP server entrypoint with OAuth 2.1 resource-server authentication."""
 from __future__ import annotations
-import contextlib, logging
+import contextlib
+import logging
 import uvicorn
 from starlette.requests import Request
 from starlette.responses import JSONResponse
