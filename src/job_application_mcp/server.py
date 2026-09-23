@@ -1,6 +1,6 @@
 """Remote MCP server entrypoint.
 
-Composes: health/ready endpoints, bearer-auth middleware, and the FastMCP
+Composes: health/ready endpoints, bearer-auth middleware, and the MCP
 streamable-HTTP app, all served over one HTTPS-fronted process.
 """
 
@@ -19,7 +19,6 @@ from starlette.routing import Mount, Route
 
 from job_application_mcp.config.settings import get_settings
 from job_application_mcp.database.database import init_db
-from job_application_mcp.mcp_app import mcp
 
 # Imported for their side effect: each module registers its tools on the
 # shared `mcp` instance via @mcp.tool(). The noqa is because the names
@@ -31,6 +30,7 @@ from job_application_mcp.mcp.tools import (  # noqa: F401
     profile_tools,
     resume_tools,
 )
+from job_application_mcp.mcp_app import mcp
 
 logger = logging.getLogger("job_application_mcp")
 
@@ -82,7 +82,17 @@ async def ready(request: Request) -> JSONResponse:
 
 
 def create_app() -> Starlette:
-    mcp_asgi_app = mcp.streamable_http_app()
+    # mcp v2.x (MCPServer, formerly FastMCP): these options live on
+    # streamable_http_app() itself, not on the constructor.
+    #   - streamable_http_path="/": served bare because this whole ASGI app
+    #     is mounted under "/mcp" below — otherwise it'd double up as /mcp/mcp.
+    #   - stateless_http + json_response: recommended for production
+    #     scalability (no server-side session pinning required).
+    mcp_asgi_app = mcp.streamable_http_app(
+        streamable_http_path="/",
+        json_response=True,
+        stateless_http=True,
+    )
 
     @contextlib.asynccontextmanager
     async def lifespan(app: Starlette):
