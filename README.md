@@ -6,7 +6,7 @@
 
 A personal job-application assistant, exposed as a remote [MCP](https://modelcontextprotocol.io) server for **Claude Web**. It manages your profile, resumes, job analysis, and application tracking. It does **not** scrape or automate any job platform — job descriptions are supplied by you (pasted or typed), and the final submission is always done by you, manually.
 
-> **Status:** the core server is implemented and verified end-to-end (21 MCP tools, real JSON-RPC handshake over HTTP, bearer auth, Docker build, and CI). The repository is prepared for an Azure Container Apps deployment; public deployment and Claude connector authentication remain the final operational steps.
+> **Status:** the core server is implemented and verified end-to-end (21 MCP tools, Streamable HTTP, OAuth 2.1 resource-server authentication, Docker build, and CI). The repository is prepared for Azure Container Apps and Claude Web custom connectors.
 
 ## Table of contents
 
@@ -51,6 +51,8 @@ Claude Web
     ▼
 Remote MCP Server (Starlette + official `mcp` v2.x SDK)
     │
+    ├── OAuth 2.1 Resource Server → Auth0 (JWT/JWKS verification)
+    │
     ├── Profile Service
     ├── Resume/CV Service        (upload, versioning, text extraction, keyword-based selection)
     ├── Job Service               (create, duplicate detection, transparent keyword analysis)
@@ -84,7 +86,7 @@ Every tool's description is explicit about what it does and doesn't do. For exam
 ```text
 job-application-mcp/
 ├── src/job_application_mcp/
-│   ├── server.py              # ASGI app: health/ready routes, bearer auth, uvicorn entrypoint
+│   ├── server.py              # ASGI app: health/ready routes, OAuth auth, uvicorn entrypoint
 │   ├── mcp_app.py             # shared MCPServer instance
 │   ├── config/settings.py     # env-driven configuration
 │   ├── database/              # SQLAlchemy engine/session + models
@@ -129,7 +131,11 @@ See [`.env.example`](.env.example) for the full, current list. The essentials:
 | Variable | Purpose | Default |
 |---|---|---|
 | `DATABASE_URL` | SQLAlchemy async connection string | `sqlite+aiosqlite:///./data/app.db` |
-| `MCP_AUTH_TOKENS` | Comma-separated bearer token(s) required on `/mcp` | *(empty — server refuses to serve `/mcp` until set)* |
+| `OAUTH_ISSUER_URL` | Auth0 issuer URL | *(required)* |
+| `OAUTH_AUDIENCE` | Auth0 API Identifier / JWT audience | *(required)* |
+| `OAUTH_RESOURCE_URL` | Exact public `/mcp` URL used for RFC 9728 metadata | *(required)* |
+| `OAUTH_JWKS_URL` | Optional Auth0 JWKS URL | derived from issuer |
+| `OAUTH_REQUIRED_SCOPE` | Scope required on MCP access tokens | `mcp:access` |
 | `MCP_HOST` / `MCP_PORT` | Bind address | `0.0.0.0` / `8000` |
 | `UPLOAD_DIR` | Where resume files are stored on disk | `./uploads` |
 | `AI_PROVIDER` / `AI_API_KEY` / `AI_MODEL` | Reserved for the AI-assisted analysis layer (not yet implemented) | — |
@@ -186,7 +192,7 @@ Once deployed, add it in Claude Web as a **custom remote MCP connector**, pointi
 https://<your-deployed-domain>/mcp
 ```
 
-with the bearer token you set in `MCP_AUTH_TOKENS` as the connector's auth credential. The exact steps/labels in Claude's UI can change — follow [Claude's current documentation](https://docs.claude.com) for adding a custom connector if what you see doesn't match an older guide. A dedicated walkthrough will land in `docs/claude-web.md`.
+Authentication is OAuth 2.1 through Auth0; Claude signs in through the OAuth authorization flow rather than receiving a shared bearer secret. See [`docs/claude-web.md`](docs/claude-web.md) for the Auth0 setup and Claude callback configuration.
 
 ## Example prompts
 
@@ -199,7 +205,7 @@ Once connected, things like:
 
 ## Security
 
-- The `/mcp` endpoint is protected by a static bearer token (`MCP_AUTH_TOKENS`); the server refuses to serve it at all if no token is configured, rather than defaulting to open access.
+- The `/mcp` endpoint is protected by OAuth 2.1 bearer access tokens issued by Auth0. JWT signatures, issuer, audience, expiry, and required scope are verified before MCP requests are served.
 - No secrets, `.env` files, or database files are committed — see `.gitignore` / `.dockerignore`.
 - File uploads are validated by extension and size, and filenames are checked for path traversal before being written to disk.
 - The Docker image runs as a non-root user.
@@ -207,7 +213,7 @@ Once connected, things like:
 
 ## Limitations
 
-- **Single-user.** Auth is one shared bearer token, not per-user OAuth. Fine for personal use; not meant to be handed out to multiple people.
+- **Personal deployment.** Authentication is delegated to one Auth0 tenant and the MCP tools operate on the database attached to this deployment. Add application-level authorization rules before turning this into a multi-user service.
 - **No AI-assisted analysis yet.** Resume selection and job analysis are transparent keyword-matching heuristics, not LLM-based reasoning — by design, so there's nothing to audit for fabrication yet. A proper AI-assisted layer (with explicit no-fabrication prompt rules) is on the roadmap.
 - **No migrations yet.** Schema changes currently mean dropping and recreating tables in development; Alembic migrations for safe production upgrades aren't wired up yet.
 - **Never submits anything.** By design, not a bug — this project prepares and tracks applications; you always click submit yourself.
@@ -227,7 +233,7 @@ Once connected, things like:
 - [ ] Integration tests against the running HTTP server
 - [x] Azure Container Apps deployment documentation
 - [ ] Public Azure deployment
-- [ ] OAuth 2.1 for Claude Web accounts without static request-header support
+- [x] OAuth 2.1 resource-server authentication for Claude Web
 - [ ] Durable resume-file storage
 
 ## Contributing
