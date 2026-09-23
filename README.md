@@ -6,7 +6,7 @@
 
 A personal job-application assistant, exposed as a remote [MCP](https://modelcontextprotocol.io) server for **Claude Web**. It manages your profile, resumes, job analysis, and application tracking. It does **not** scrape or automate any job platform — job descriptions are supplied by you (pasted or typed), and the final submission is always done by you, manually.
 
-> **Status:** the core server is implemented and verified end-to-end (21 MCP tools, real JSON-RPC handshake over HTTP, bearer auth, Docker build). It is not yet deployed publicly or wired up as CI. See [Roadmap](#roadmap).
+> **Status:** the core server is implemented and verified end-to-end (21 MCP tools, real JSON-RPC handshake over HTTP, bearer auth, Docker build, and CI). A Render deployment Blueprint is included; public deployment and Claude connector authentication remain the final operational steps.
 
 ## Table of contents
 
@@ -221,12 +221,14 @@ Once connected, things like:
 - [x] MCP server + tools, verified end-to-end over HTTP (health check, bearer auth, `initialize`, `tools/list`)
 - [x] Unit tests (16 passing) + clean `ruff` lint
 - [x] Docker + docker-compose, verified with a production-equivalent install and boot
-- [ ] CI (GitHub Actions for lint + tests)
+- [x] CI (GitHub Actions for lint + tests)
 - [ ] Alembic migrations
 - [ ] AI provider abstraction + prompts (no-fabrication rules) for deeper job analysis and cover-letter generation
 - [ ] Integration tests against the running HTTP server
+- [x] Render deployment Blueprint (`render.yaml`)
 - [ ] Public deployment
-- [ ] `docs/deployment.md` and `docs/claude-web.md`
+- [ ] OAuth 2.1 for Claude Web accounts without static request-header support
+- [ ] Durable resume-file storage
 
 ## Contributing
 
