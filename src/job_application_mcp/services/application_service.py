@@ -64,9 +64,7 @@ async def get_application(session: AsyncSession, application_id: str) -> Applica
     return result.scalar_one_or_none()
 
 
-async def list_applications(
-    session: AsyncSession, *, status: str | None = None
-) -> list[Application]:
+async def list_applications(session: AsyncSession, *, status: str | None = None) -> list[Application]:
     stmt = select(Application)
     if status:
         stmt = stmt.where(Application.status == status)
