@@ -1,21 +1,19 @@
 """Remote MCP server entrypoint.
 
-Composes: health/ready endpoints, bearer-auth middleware, and the MCP
-streamable-HTTP app, all served over one HTTPS-fronted process.
+Composes: health/ready endpoints (registered on the MCP server itself via
+@mcp.custom_route, so they live as sibling routes with no extra Mount/prefix
+layer — a Starlette Mount here previously caused a 307 redirect from /mcp to
+/mcp/, which is exactly the kind of thing that silently breaks a real client)
+and bearer-auth middleware around the streamable-HTTP app.
 """
 
 from __future__ import annotations
 
-import contextlib
 import logging
 
 import uvicorn
-from starlette.applications import Starlette
-from starlette.middleware import Middleware
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.routing import Mount, Route
 
 from job_application_mcp.config.settings import get_settings
 from job_application_mcp.database.database import init_db
@@ -35,86 +33,79 @@ from job_application_mcp.mcp_app import mcp
 logger = logging.getLogger("job_application_mcp")
 
 
-class BearerAuthMiddleware(BaseHTTPMiddleware):
-    """Static shared-secret bearer auth in front of the /mcp endpoint.
-
-    This is a personal, single-user server, so a long random bearer token
-    (MCP_AUTH_TOKENS) is used instead of standing up a full OAuth 2.1
-    authorization server. See docs/security.md for the reasoning and for
-    what you'd need to add for a multi-user deployment.
-    """
-
-    def __init__(self, app, protected_prefix: str = "/mcp") -> None:
-        super().__init__(app)
-        self.protected_prefix = protected_prefix
-
-    async def dispatch(self, request: Request, call_next):
-        if not request.url.path.startswith(self.protected_prefix):
-            return await call_next(request)
-
-        settings = get_settings()
-        tokens = settings.auth_tokens
-        if not tokens:
-            # Refuse to serve an unprotected MCP endpoint rather than silently
-            # allowing open access when no token has been configured.
-            return JSONResponse(
-                {"error": "Server has no MCP_AUTH_TOKENS configured; refusing to serve /mcp."},
-                status_code=503,
-            )
-
-        auth_header = request.headers.get("authorization", "")
-        if not auth_header.startswith("Bearer "):
-            return JSONResponse({"error": "Missing bearer token."}, status_code=401)
-
-        token = auth_header.removeprefix("Bearer ").strip()
-        if token not in tokens:
-            return JSONResponse({"error": "Invalid bearer token."}, status_code=401)
-
-        return await call_next(request)
-
-
+@mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
+@mcp.custom_route("/ready", methods=["GET"])
 async def ready(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ready"})
 
 
-def create_app() -> Starlette:
-    # mcp v2.x (MCPServer, formerly FastMCP): these options live on
-    # streamable_http_app() itself, not on the constructor.
-    #   - streamable_http_path="/": served bare because this whole ASGI app
-    #     is mounted under "/mcp" below — otherwise it'd double up as /mcp/mcp.
-    #   - stateless_http + json_response: recommended for production
-    #     scalability (no server-side session pinning required).
-    mcp_asgi_app = mcp.streamable_http_app(
-        streamable_http_path="/",
-        json_response=True,
-        stateless_http=True,
-    )
+class BearerAuthMiddleware:
+    """Static shared-secret bearer auth in front of the /mcp endpoint only.
 
-    @contextlib.asynccontextmanager
-    async def lifespan(app: Starlette):
-        # Dev convenience: create tables directly if they don't exist yet.
-        # Production deployments should run `alembic upgrade head` instead
-        # and can skip this (it's a no-op against an already-migrated DB).
-        await init_db()
-        async with mcp.session_manager.run():
-            yield
+    Pure ASGI middleware (not BaseHTTPMiddleware) so it doesn't buffer or
+    interfere with the streamable-HTTP transport's request/response streaming.
 
-    return Starlette(
-        routes=[
-            Route("/health", health),
-            Route("/ready", ready),
-            Mount("/mcp", app=mcp_asgi_app),
-        ],
-        middleware=[Middleware(BearerAuthMiddleware, protected_prefix="/mcp")],
-        lifespan=lifespan,
-    )
+    This is a personal, single-user server, so a long random bearer token
+    (MCP_AUTH_TOKENS) is used instead of standing up a full OAuth 2.1
+    authorization server. See docs/security.md for the reasoning and for
+    what a multi-user deployment would need instead.
+    """
+
+    def __init__(self, app, protected_prefix: str = "/mcp") -> None:
+        self.app = app
+        self.protected_prefix = protected_prefix
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or not scope["path"].startswith(self.protected_prefix):
+            await self.app(scope, receive, send)
+            return
+
+        settings = get_settings()
+        tokens = settings.auth_tokens
+
+        async def deny(status: int, message: str) -> None:
+            response = JSONResponse({"error": message}, status_code=status)
+            await response(scope, receive, send)
+
+        if not tokens:
+            # Refuse to serve an unprotected MCP endpoint rather than
+            # silently allowing open access when no token is configured.
+            await deny(503, "Server has no MCP_AUTH_TOKENS configured; refusing to serve /mcp.")
+            return
+
+        headers = dict(scope.get("headers") or [])
+        auth_header = headers.get(b"authorization", b"").decode("latin-1")
+        if not auth_header.startswith("Bearer "):
+            await deny(401, "Missing bearer token.")
+            return
+
+        token = auth_header.removeprefix("Bearer ").strip()
+        if token not in tokens:
+            await deny(401, "Invalid bearer token.")
+            return
+
+        await self.app(scope, receive, send)
+
+
+def create_app():
+    # mcp v2.x (MCPServer, formerly FastMCP): stateless_http + json_response
+    # are recommended for production scalability (no server-side session
+    # pinning required). streamable_http_path defaults to "/mcp", matching
+    # what docs/claude-web.md tells the user to configure.
+    mcp_asgi_app = mcp.streamable_http_app(json_response=True, stateless_http=True)
+    mcp_asgi_app.add_middleware(BearerAuthMiddleware, protected_prefix="/mcp")
+    return mcp_asgi_app
 
 
 app = create_app()
+
+
+async def _lifespan_init_db():
+    await init_db()
 
 
 def main() -> None:
