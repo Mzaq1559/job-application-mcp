@@ -22,10 +22,14 @@ def get_engine():
     global _engine
     if _engine is None:
         settings = get_settings()
+        database_url = settings.database_url
+        if database_url.startswith("postgresql://"):
+            database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
         connect_args = {}
-        if settings.database_url.startswith("sqlite"):
+        if database_url.startswith("sqlite"):
             connect_args = {"check_same_thread": False}
-        _engine = create_async_engine(settings.database_url, connect_args=connect_args)
+        _engine = create_async_engine(database_url, connect_args=connect_args)
     return _engine
 
 
