@@ -9,6 +9,7 @@ and bearer-auth middleware around the streamable-HTTP app.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 
 import uvicorn
@@ -98,14 +99,27 @@ def create_app():
     # what docs/claude-web.md tells the user to configure.
     mcp_asgi_app = mcp.streamable_http_app(json_response=True, stateless_http=True)
     mcp_asgi_app.add_middleware(BearerAuthMiddleware, protected_prefix="/mcp")
+
+    # Run DB setup as part of the ASGI app's own startup, so this works
+    # whether it's launched via main() below or via
+    # `uvicorn job_application_mcp.server:app` directly (e.g. on a managed
+    # platform that supplies its own process command).
+    original_lifespan = mcp_asgi_app.router.lifespan_context
+
+    @contextlib.asynccontextmanager
+    async def lifespan_with_db_init(app):
+        # Dev convenience: create tables directly if they don't exist yet.
+        # Production deployments should run `alembic upgrade head` instead
+        # (this is a no-op against an already-migrated database).
+        await init_db()
+        async with original_lifespan(app) as state:
+            yield state
+
+    mcp_asgi_app.router.lifespan_context = lifespan_with_db_init
     return mcp_asgi_app
 
 
 app = create_app()
-
-
-async def _lifespan_init_db():
-    await init_db()
 
 
 def main() -> None:
