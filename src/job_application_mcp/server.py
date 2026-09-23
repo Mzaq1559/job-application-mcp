@@ -7,7 +7,13 @@ from starlette.responses import JSONResponse
 from job_application_mcp.auth import Auth0TokenVerifier, build_auth_settings
 from job_application_mcp.config.settings import get_settings
 from job_application_mcp.database.database import init_db
-from job_application_mcp.mcp.tools import application_tools, interview_tools, job_tools, profile_tools, resume_tools  # noqa: F401
+from job_application_mcp.mcp.tools import (  # noqa: F401
+    application_tools,
+    interview_tools,
+    job_tools,
+    profile_tools,
+    resume_tools,
+)
 from job_application_mcp.mcp_app import mcp
 
 logger = logging.getLogger("job_application_mcp")
@@ -28,9 +34,22 @@ def create_app():
         raise RuntimeError("OAUTH_AUDIENCE must be configured for the remote MCP server.")
     if not settings.oauth_resource_url:
         raise RuntimeError("OAUTH_RESOURCE_URL must be configured for the remote MCP server.")
-    verifier = Auth0TokenVerifier(issuer_url=settings.oauth_issuer_url, audience=settings.oauth_audience, jwks_url=settings.oauth_jwks_url or None)
-    auth = build_auth_settings(issuer_url=settings.oauth_issuer_url, resource_url=settings.oauth_resource_url, required_scope=settings.oauth_required_scope)
-    mcp_asgi_app = mcp.streamable_http_app(json_response=True, stateless_http=True, auth=auth, token_verifier=verifier)
+    verifier = Auth0TokenVerifier(
+        issuer_url=settings.oauth_issuer_url,
+        audience=settings.oauth_audience,
+        jwks_url=settings.oauth_jwks_url or None,
+    )
+    auth = build_auth_settings(
+        issuer_url=settings.oauth_issuer_url,
+        resource_url=settings.oauth_resource_url,
+        required_scope=settings.oauth_required_scope,
+    )
+    mcp_asgi_app = mcp.streamable_http_app(
+        json_response=True,
+        stateless_http=True,
+        auth=auth,
+        token_verifier=verifier,
+    )
     original_lifespan = mcp_asgi_app.router.lifespan_context
     @contextlib.asynccontextmanager
     async def lifespan_with_db_init(app):
