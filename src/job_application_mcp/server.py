@@ -20,24 +20,35 @@ from job_application_mcp.mcp.tools import (  # noqa: F401
 )
 from job_application_mcp.mcp_app import mcp
 
+
 logger = logging.getLogger("job_application_mcp")
+
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
+
 @mcp.custom_route("/ready", methods=["GET"])
 async def ready(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ready"})
 
+
 def create_app():
     settings = get_settings()
     if not settings.oauth_issuer_url:
-        raise RuntimeError("OAUTH_ISSUER_URL must be configured for the remote MCP server.")
+        raise RuntimeError(
+            "OAUTH_ISSUER_URL must be configured for the remote MCP server."
+        )
     if not settings.oauth_audience:
-        raise RuntimeError("OAUTH_AUDIENCE must be configured for the remote MCP server.")
+        raise RuntimeError(
+            "OAUTH_AUDIENCE must be configured for the remote MCP server."
+        )
     if not settings.oauth_resource_url:
-        raise RuntimeError("OAUTH_RESOURCE_URL must be configured for the remote MCP server.")
+        raise RuntimeError(
+            "OAUTH_RESOURCE_URL must be configured for the remote MCP server."
+        )
+
     verifier = Auth0TokenVerifier(
         issuer_url=settings.oauth_issuer_url,
         audience=settings.oauth_audience,
@@ -54,21 +65,27 @@ def create_app():
         auth=auth,
         token_verifier=verifier,
     )
+
     original_lifespan = mcp_asgi_app.router.lifespan_context
+
     @contextlib.asynccontextmanager
     async def lifespan_with_db_init(app):
         await init_db()
         async with original_lifespan(app) as state:
             yield state
+
     mcp_asgi_app.router.lifespan_context = lifespan_with_db_init
     return mcp_asgi_app
 
+
 app = create_app()
+
 
 def main() -> None:
     settings = get_settings()
     logging.basicConfig(level=settings.log_level)
     uvicorn.run(app, host=settings.mcp_host, port=settings.mcp_port)
+
 
 if __name__ == "__main__":
     main()
