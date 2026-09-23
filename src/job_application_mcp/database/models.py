@@ -48,8 +48,8 @@ class Profile(Base, TimestampMixin):
     achievements: Mapped[list | None] = mapped_column("achievements_json", Text)
     preferences: Mapped[dict | None] = mapped_column("preferences_json", Text)
 
-    resumes: Mapped[list["Resume"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
-    applications: Mapped[list["Application"]] = relationship(
+    resumes: Mapped[list[Resume]] = relationship(back_populates="profile", cascade="all, delete-orphan")
+    applications: Mapped[list[Application]] = relationship(
         back_populates="profile", cascade="all, delete-orphan"
     )
 
@@ -65,7 +65,7 @@ class Resume(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(default=True)
 
     profile: Mapped[Profile] = relationship(back_populates="resumes")
-    versions: Mapped[list["ResumeVersion"]] = relationship(
+    versions: Mapped[list[ResumeVersion]] = relationship(
         back_populates="resume", cascade="all, delete-orphan"
     )
 
@@ -106,7 +106,7 @@ class Job(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text)
     analysis_json: Mapped[str | None] = mapped_column(Text)  # cached job_analyze() output
 
-    applications: Mapped[list["Application"]] = relationship(back_populates="job")
+    applications: Mapped[list[Application]] = relationship(back_populates="job")
 
 
 class Application(Base, TimestampMixin):
@@ -125,16 +125,16 @@ class Application(Base, TimestampMixin):
 
     profile: Mapped[Profile] = relationship(back_populates="applications")
     job: Mapped[Job] = relationship(back_populates="applications")
-    documents: Mapped[list["ApplicationDocument"]] = relationship(
+    documents: Mapped[list[ApplicationDocument]] = relationship(
         back_populates="application", cascade="all, delete-orphan"
     )
-    screening_questions: Mapped[list["ScreeningQuestion"]] = relationship(
+    screening_questions: Mapped[list[ScreeningQuestion]] = relationship(
         back_populates="application", cascade="all, delete-orphan"
     )
-    interviews: Mapped[list["Interview"]] = relationship(
+    interviews: Mapped[list[Interview]] = relationship(
         back_populates="application", cascade="all, delete-orphan"
     )
-    events: Mapped[list["ApplicationEvent"]] = relationship(
+    events: Mapped[list[ApplicationEvent]] = relationship(
         back_populates="application", cascade="all, delete-orphan", order_by="ApplicationEvent.created_at"
     )
 
@@ -177,7 +177,7 @@ class Interview(Base, TimestampMixin):
     meeting_url: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped[Application] = relationship(back_populates="interviews")
-    notes: Mapped[list["InterviewNote"]] = relationship(
+    notes: Mapped[list[InterviewNote]] = relationship(
         back_populates="interview", cascade="all, delete-orphan"
     )
 
