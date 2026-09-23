@@ -11,6 +11,7 @@ from starlette.responses import JSONResponse
 from job_application_mcp.auth import Auth0TokenVerifier, build_auth_settings
 from job_application_mcp.config.settings import get_settings
 from job_application_mcp.database.database import init_db
+from job_application_mcp.mcp_app import mcp
 from job_application_mcp.mcp.tools import (  # noqa: F401
     application_tools,
     interview_tools,
@@ -18,7 +19,6 @@ from job_application_mcp.mcp.tools import (  # noqa: F401
     profile_tools,
     resume_tools,
 )
-from job_application_mcp.mcp_app import mcp
 
 
 logger = logging.getLogger("job_application_mcp")
