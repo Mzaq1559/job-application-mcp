@@ -68,7 +68,7 @@ async def upload_resume_version(
     # Deactivate previous versions, add the new one as active.
     for v in resume.versions:
         v.is_active_version = False
-    next_version_number = (max((v.version_number for v in resume.versions), default=0)) + 1
+    next_version_number = max((v.version_number for v in resume.versions), default=0) + 1
 
     version = ResumeVersion(
         resume_id=resume.id,
@@ -103,9 +103,7 @@ def _active_text(resume: Resume) -> str:
     return ""
 
 
-async def select_resume_for_job(
-    session: AsyncSession, *, job_description: str
-) -> dict:
+async def select_resume_for_job(session: AsyncSession, *, job_description: str) -> dict:
     """Simple, transparent keyword-overlap scoring — no fabricated "AI confidence".
 
     This is a heuristic starting point; job_service / AI-assisted analysis
@@ -136,8 +134,7 @@ async def select_resume_for_job(
     return {
         "recommended_resume": {"id": best.id, "name": best.name, "type": best.type},
         "alternatives": [
-            {"id": r.id, "name": r.name, "type": r.type, "overlap_score": s}
-            for r, s, _ in scored[1:4]
+            {"id": r.id, "name": r.name, "type": r.type, "overlap_score": s} for r, s, _ in scored[1:4]
         ],
         "matching_skills": best_overlap[:25],
         "missing_skills": [],  # requires stored profile skills vs. job requirements; left explicit
