@@ -1,10 +1,13 @@
 """Remote MCP server entrypoint with OAuth 2.1 resource-server authentication."""
 from __future__ import annotations
+
 import contextlib
 import logging
+
 import uvicorn
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+
 from job_application_mcp.auth import Auth0TokenVerifier, build_auth_settings
 from job_application_mcp.config.settings import get_settings
 from job_application_mcp.database.database import init_db
