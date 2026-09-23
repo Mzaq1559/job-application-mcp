@@ -1,58 +1,93 @@
-# Deployment
+# Azure Container Apps Deployment
 
-## Render
+This project is intended for Azure Container Apps Consumption. Azure currently provides a monthly free grant for Container Apps Consumption, including 180,000 vCPU-seconds, 360,000 GiB-seconds, and 2 million requests per subscription; usage beyond the grant is billed. citeturn0search4
 
-The repository includes render.yaml for a Docker web service and managed PostgreSQL.
+## 1. Create the app
 
-1. Open Render and choose New -> Blueprint.
-2. Connect this GitHub repository and deploy the main branch.
-3. When prompted for secrets, set MCP_AUTH_TOKENS to a long random value.
-4. Leave AI_API_KEY empty unless the future AI layer is enabled.
-5. Wait for the health check at /health to pass.
+From the repository root:
 
-Render provides public HTTPS endpoints and managed PostgreSQL. The application also converts a standard postgresql:// URL into SQLAlchemy's postgresql+asyncpg:// form automatically.
+    az login
+    az extension add --name containerapp --upgrade
+    az containerapp up --name job-application-mcp --resource-group job-application-mcp-rg --location centralindia --source . --ingress external --target-port 8000
 
-### Smoke test
+Azure documents `az containerapp up` as a way to deploy from local source or GitHub, using the Dockerfile when present. citeturn0search1turn0search2
 
-Set the deployed URL:
+## 2. Configure the MCP secret
 
-    export URL=https://YOUR-SERVICE.onrender.com
+Generate a token locally:
 
-Then:
+    python -c "import secrets; print(secrets.token_urlsafe(32))"
 
-    curl -fsS "$URL/health"
-    curl -fsS "$URL/ready"
+Store it as a Container Apps secret:
 
-The MCP endpoint is:
+    az containerapp secret set --name job-application-mcp --resource-group job-application-mcp-rg --secrets mcp-auth-token='PASTE_TOKEN_HERE'
 
-    https://YOUR-SERVICE.onrender.com/mcp
+Reference it from the environment:
 
-Without Authorization, /mcp must return 401.
+    az containerapp update --name job-application-mcp --resource-group job-application-mcp-rg --set-env-vars MCP_AUTH_TOKENS=secretref:mcp-auth-token APP_ENV=production LOG_LEVEL=INFO MCP_HOST=0.0.0.0 MCP_PORT=8000
 
-With Authorization: Bearer YOUR_MCP_AUTH_TOKENS, the MCP initialize request should succeed.
+Azure supports secret references with `secretref:`. citeturn1search2turn1search5
 
-## Important production notes
+## 3. Configure PostgreSQL
 
-- PostgreSQL data is persistent.
-- Uploaded resume files are currently stored on the container filesystem at /app/uploads. They are not yet durable across container replacement. Move uploads to object storage or attach a persistent disk before relying on the hosted service as the only copy.
-- Alembic is installed but startup currently uses SQLAlchemy create_all. Add and run migrations before making schema changes in production.
-- Keep MCP_AUTH_TOKENS secret and rotate it if exposed.
-- The current server is single-user.
+For production, set `DATABASE_URL` to durable PostgreSQL. Azure Database for PostgreSQL can use your Azure for Students credit, or another PostgreSQL provider can be used if you need to avoid Azure database charges.
 
-## Claude Web authentication
+Example format:
 
-Anthropic's current custom connector flow is OAuth-oriented. Some Claude organizations/accounts also expose request-header authentication.
+    postgresql+asyncpg://USER:PASSWORD@HOST:5432/DATABASE
 
-If your Claude connector UI shows Request headers, configure:
+Store it as a secret:
 
-    Authorization: Bearer YOUR_MCP_AUTH_TOKENS
+    az containerapp secret set --name job-application-mcp --resource-group job-application-mcp-rg --secrets database-url='PASTE_DATABASE_URL_HERE'
 
-with the URL:
+Then reference it:
 
-    https://YOUR-SERVICE.onrender.com/mcp
+    az containerapp update --name job-application-mcp --resource-group job-application-mcp-rg --set-env-vars DATABASE_URL=secretref:database-url
 
-If Request headers are unavailable, do not disable authentication. The next required hardening step is OAuth 2.1 with dynamic client registration and PKCE.
+Do not commit database credentials.
 
-## Cost
+## 4. Keep it cheap
 
-The Blueprint uses a small paid web service and small managed Postgres instance so the MCP server does not depend on free-tier cold starts. Render's current published pricing lists the 0.5 CPU / 512 MB web plan at $7/month and the 0.1 CPU / 256 MB Postgres plan at $6/month, before other usage. Check Render's pricing page before deploying.
+Use scale-to-zero and one maximum replica for this single-user MCP server:
+
+    az containerapp update --name job-application-mcp --resource-group job-application-mcp-rg --min-replicas 0 --max-replicas 1 --scale-rule-name http-scale --scale-rule-type http --scale-rule-http-concurrency 1
+
+Azure supports minimum replicas of 0 and HTTP scaling. No usage charges apply while an app is scaled to zero. citeturn1search0turn1search1
+
+The trade-off is a cold start after inactivity. If Claude times out on the first request, set minimum replicas to 1, accepting the additional usage cost.
+
+## 5. Verify
+
+Get the public hostname:
+
+    az containerapp show --name job-application-mcp --resource-group job-application-mcp-rg --query properties.configuration.ingress.fqdn --output tsv
+
+Then test:
+
+    export URL=https://YOUR-FQDN
+    curl -fsS $URL/health
+    curl -fsS $URL/ready
+    curl -i $URL/mcp
+
+`/health` should return 200 and `/mcp` should return 401 without authentication.
+
+## 6. GitHub deployments
+
+Azure supports GitHub Actions for building and publishing new Container Apps revisions. The Azure CLI can generate the workflow when deploying from a GitHub repository. citeturn0search0turn0search3
+
+    az containerapp up --name job-application-mcp --resource-group job-application-mcp-rg --repo https://github.com/Mzaq1559/job-application-mcp
+
+Do not rerun this blindly if the resources already exist; use the existing resource group and Container App.
+
+## Production checklist
+
+- [ ] External HTTPS ingress on port 8000
+- [ ] MCP bearer token stored as an Azure secret
+- [ ] Durable PostgreSQL configured
+- [ ] `/health` returns 200
+- [ ] `/mcp` returns 401 without a token
+- [ ] Authenticated MCP initialize/tools-list works
+- [ ] Resume uploads moved to durable storage before relying on hosted files
+- [ ] Claude Web authentication configured
+
+Static bearer authentication only works with Claude accounts that expose request-header authentication. Otherwise the server needs OAuth 2.1.
