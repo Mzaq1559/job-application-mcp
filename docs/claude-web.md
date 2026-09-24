@@ -6,7 +6,7 @@ The remote server is deployed on Azure Container Apps. Get the hostname with:
 
 Current MCP URL:
 
-    https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
+    https://job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io/mcp
 
 ## Authentication architecture
 
@@ -28,7 +28,7 @@ The `/mcp` endpoint requires a valid OAuth bearer access token. The server verif
 2. In Applications → APIs, create an API.
 3. Use the exact MCP URL as the API Identifier:
 
-       https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
+       https://job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io/mcp
 
 4. Keep the API signing algorithm at RS256.
 5. Add the API permission/scope:
@@ -48,8 +48,8 @@ The `/mcp` endpoint requires a valid OAuth bearer access token. The server verif
 Configure these Container App environment variables:
 
     OAUTH_ISSUER_URL=https://YOUR-AUTH0-DOMAIN/
-    OAUTH_AUDIENCE=https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
-    OAUTH_RESOURCE_URL=https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
+    OAUTH_AUDIENCE=https://job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io/mcp
+    OAUTH_RESOURCE_URL=https://job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io/mcp
     OAUTH_REQUIRED_SCOPE=mcp:access
 
 OAUTH_JWKS_URL can be omitted; the server derives Auth0's standard JWKS endpoint from the issuer.
@@ -65,13 +65,13 @@ After building and pushing the updated image, set the environment variables:
       --resource-group job-application-mcp-rg \
       --set-env-vars \
         "OAUTH_ISSUER_URL=https://YOUR-AUTH0-DOMAIN/" \
-        "OAUTH_AUDIENCE=https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp" \
-        "OAUTH_RESOURCE_URL=https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp" \
+        "OAUTH_AUDIENCE=https://job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io/mcp" \
+        "OAUTH_RESOURCE_URL=https://job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io/mcp" \
         "OAUTH_REQUIRED_SCOPE=mcp:access"
 
 Verify unauthenticated MCP access:
 
-    curl -i https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
+    curl -i https://job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io/mcp
 
 It should return 401 Unauthorized and a WWW-Authenticate header pointing to the protected-resource metadata.
 
@@ -84,7 +84,7 @@ For Claude Pro/Max:
 3. Name it Job Application MCP.
 4. Enter the MCP URL:
 
-       https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
+       https://job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io/mcp
 
 5. Open Advanced settings.
 6. Enter the Auth0 Client ID and Client Secret from the Regular Web Application.
@@ -101,7 +101,7 @@ Anthropic's current documentation says remote custom MCP connectors are availabl
 
 The production endpoint is:
 
-    https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
+    https://job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io/mcp
 
 GitHub Actions now authenticates to Azure with GitHub OIDC rather than a long-lived Azure credential. The workflow builds the Docker image, pushes it to Azure Container Registry, updates the Container App to the exact Git SHA image, and checks `/health` after deployment.
 
