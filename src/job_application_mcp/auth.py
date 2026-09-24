@@ -1,4 +1,5 @@
 """OAuth 2.1 resource-server token verification for Auth0."""
+
 from __future__ import annotations
 
 import asyncio
@@ -84,16 +85,10 @@ class Auth0TokenVerifier(TokenVerifier):
                 options={"require": ["exp", "iat", "sub"]},
             )
             scope_claim = claims.get("scope", "")
-            scopes = (
-                scope_claim.split()
-                if isinstance(scope_claim, str)
-                else []
-            )
+            scopes = scope_claim.split() if isinstance(scope_claim, str) else []
             return AccessToken(
                 token=token,
-                client_id=str(
-                    claims.get("azp") or claims.get("client_id") or ""
-                ),
+                client_id=str(claims.get("azp") or claims.get("client_id") or ""),
                 scopes=scopes,
                 expires_at=int(claims["exp"]),
                 resource=self.audience,
