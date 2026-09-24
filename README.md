@@ -262,6 +262,17 @@ Once connected, things like:
 
 ## Contributing
 
+Community development happens on the **`community` branch**. Contributors should fork the repository, create a focused branch from `community`, and open pull requests back into `community`. The `main` branch is reserved for reviewed, release-ready changes.
+
+Before contributing, read:
+- [CONTRIBUTING.md](CONTRIBUTING.md) — development workflow, coding guidelines, and PR checklist
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — community standards
+- [SECURITY.md](SECURITY.md) — vulnerability reporting
+
+Contributions are especially useful around the AI-assisted analysis layer, Alembic migrations, integrations, durable storage, testing, observability, authentication/authorization, multi-user support, and deployment.
+
+If you want to build on this project commercially, host it for customers, or include it in a paid product, contact the maintainer for commercial licensing.
+
 This started as a personal project, but issues and PRs are welcome. Contributions are especially useful around the AI-assisted analysis layer, Alembic migrations, integrations, durable storage, testing, observability, and additional ATS-adjacent tooling that does not involve scraping or unauthorized automation.
 
 If you want to build on this project commercially, host it for customers, or include it in a paid product, contact the maintainer for commercial licensing.
