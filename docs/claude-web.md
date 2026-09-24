@@ -20,7 +20,7 @@ The server uses OAuth 2.1 as an MCP resource server:
     ▼
     Job Application MCP (/mcp)
 
-The MCP SDK publishes RFC 9728 protected-resource metadata and requires a valid bearer access token on /mcp. The server verifies the Auth0 JWT locally using Auth0's JWKS.
+The `/mcp` endpoint requires a valid OAuth bearer access token. The server verifies the Auth0 JWT locally using Auth0's JWKS. During integration, the exact metadata route should be treated as an implementation detail of the deployed MCP SDK rather than assumed from a hard-coded URL; the most useful end-to-end check is the Claude connector OAuth flow.
 
 ## Auth0 setup
 
@@ -69,12 +69,6 @@ After building and pushing the updated image, set the environment variables:
         "OAUTH_RESOURCE_URL=https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp" \
         "OAUTH_REQUIRED_SCOPE=mcp:access"
 
-Verify the public metadata endpoint:
-
-    curl -i https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/.well-known/oauth-protected-resource/mcp
-
-It should return JSON describing the MCP resource and the Auth0 issuer.
-
 Verify unauthenticated MCP access:
 
     curl -i https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
@@ -96,11 +90,20 @@ For Claude Pro/Max:
 6. Enter the Auth0 Client ID and Client Secret from the Regular Web Application.
 7. Add the connector.
 8. Click Connect and complete the Auth0 Universal Login/consent flow.
-9. Enable the connector in a chat and test with:
+9. Enable the connector for a chat from the `+` menu → Connectors.
+10. Test with:
 
        Show my profile summary.
 
-Anthropic's current custom-connector documentation says custom remote MCP connectors use a public HTTPS endpoint and can accept OAuth client ID/secret in Advanced settings.
+Anthropic's current documentation says remote custom MCP connectors are available on Claude Free, Pro, Max, Team, and Enterprise; individual Pro/Max users add them from Customize → Connectors → + → Add custom connector, with optional OAuth Client ID/Client Secret in Advanced settings. Claude reaches remote connectors from Anthropic's cloud infrastructure, so the server must be publicly reachable over HTTPS. citeturn0search0turn0search1
+
+## Current deployment
+
+The production endpoint is:
+
+    https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
+
+GitHub Actions now authenticates to Azure with GitHub OIDC rather than a long-lived Azure credential. The workflow builds the Docker image, pushes it to Azure Container Registry, updates the Container App to the exact Git SHA image, and checks `/health` after deployment.
 
 ## Security notes
 
