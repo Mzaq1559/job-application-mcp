@@ -1,21 +1,37 @@
-MIT License
+JOB APPLICATION MCP — SOURCE-AVAILABLE COMMERCIAL LICENSE
 
 Copyright (c) 2026 Muhammad Zulqarnain Abdullah
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Grant of rights
+You may view, study, fork, and contribute to the source code for personal
+evaluation, learning, and non-commercial development.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. Commercial use
+You may not use, deploy, host, offer as a service, integrate into a paid
+product, or otherwise use this software for commercial purposes without a
+separate commercial license from the copyright holder.
 
+3. Redistribution
+You may redistribute unmodified or modified source code for non-commercial
+purposes provided that this license and the copyright notice are retained.
+You may not remove or alter this license to authorize commercial use.
+
+4. Contributions
+By submitting a contribution to this repository, you agree that the
+copyright holder may use, modify, distribute, and license that contribution
+as part of the project under this license or under separate commercial
+licensing terms.
+
+5. No trademark rights
+This license does not grant rights to use the project name, trademarks,
+logos, or branding except as reasonably necessary to refer to the project.
+
+6. Disclaimer
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING
+FROM THE SOFTWARE OR THE USE OF THE SOFTWARE.
+
+For commercial licensing, contact the copyright holder through the project
+repository.
