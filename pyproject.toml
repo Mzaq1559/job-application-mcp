@@ -1,10 +1,10 @@
 [project]
 name = "job-application-mcp"
-version = "0.1.0"
+version = "1.0.0"
 description = "Job Application Management MCP server for Claude Web — profile, resume, job analysis, and application tracking. No platform scraping or automated submission."
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 authors = [{ name = "Muhammad Zulqarnain Abdullah" }]
 
 dependencies = [
