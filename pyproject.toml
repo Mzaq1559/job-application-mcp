@@ -8,7 +8,7 @@ license = { text = "MIT" }
 authors = [{ name = "Muhammad Zulqarnain Abdullah" }]
 
 dependencies = [
-    "mcp>=2.0,<3",
+    "mcp==2.2.0",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
     "pydantic>=2.9.0",
