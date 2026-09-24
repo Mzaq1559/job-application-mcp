@@ -37,7 +37,18 @@ def create_app():
     # OAuth (auth / token_verifier) is configured on the MCPServer instance
     # itself in mcp_app.py — this SDK version's streamable_http_app() only
     # accepts transport-level options, not auth.
-    mcp_asgi_app = mcp.streamable_http_app(json_response=True, stateless_http=True)
+    transport_security = TransportSecuritySettings(
+        allowed_hosts=[
+            "job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io",
+            "job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io:*",
+        ],
+    )
+
+    mcp_asgi_app = mcp.streamable_http_app(
+        json_response=True,
+        stateless_http=True,
+        transport_security=transport_security,
+    )
 
     original_lifespan = mcp_asgi_app.router.lifespan_context
 
