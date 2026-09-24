@@ -1,34 +1,110 @@
 # Claude Web
 
-After Azure deployment, get the hostname with:
+The remote server is deployed on Azure Container Apps. Get the hostname with:
 
     az containerapp show --name job-application-mcp --resource-group job-application-mcp-rg --query properties.configuration.ingress.fqdn --output tsv
 
-Your MCP URL is:
+Current MCP URL:
 
-    https://YOUR-FQDN/mcp
+    https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
 
-## Connect
+## Authentication architecture
 
-1. Open Claude → Customize → Connectors.
-2. Choose Add custom connector.
-3. Enter the Azure MCP URL.
-4. Complete the authentication method available in your Claude account.
+The server uses OAuth 2.1 as an MCP resource server:
 
-## Current authentication limitation
+    Claude Web
+    │ OAuth 2.1 + PKCE
+    ▼
+    Auth0 Authorization Server
+    │ RS256 JWT access token
+    ▼
+    Job Application MCP (/mcp)
 
-This repository currently uses a static bearer token, not OAuth 2.1.
+The MCP SDK publishes RFC 9728 protected-resource metadata and requires a valid bearer access token on /mcp. The server verifies the Auth0 JWT locally using Auth0's JWKS.
 
-If your Claude account exposes Request headers, configure:
+## Auth0 setup
 
-    Authorization: Bearer YOUR_MCP_AUTH_TOKENS
+1. Create or use an Auth0 tenant.
+2. In Applications → APIs, create an API.
+3. Use the exact MCP URL as the API Identifier:
 
-If Request headers are unavailable, do not make `/mcp` public. OAuth 2.1 with dynamic client registration and PKCE is the required next step.
+       https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
 
-## Test
+4. Keep the API signing algorithm at RS256.
+5. Add the API permission/scope:
 
-Try: `Show my profile summary.` Then test a harmless write operation.
+       mcp:access
 
-## Azure cold starts
+6. In Applications → Advanced Settings → OAuth, enable the Resource Parameter Compatibility Profile if your tenant requires it. MCP clients send the RFC 8707 resource parameter, and Auth0 documents this compatibility setting for MCP integrations.
+7. In Applications, create a Regular Web Application for Claude.
+8. Add this Allowed Callback URL:
 
-The low-cost setup uses scale-to-zero. Azure does not charge usage while the app is at zero replicas, but the first request after inactivity can take longer. citeturn0search4turn1search0
+       https://claude.ai/api/mcp/auth_callback
+
+9. Keep the application Client ID and Client Secret private. You will enter them in Claude's custom connector Advanced settings.
+
+## Azure environment variables
+
+Configure these Container App environment variables:
+
+    OAUTH_ISSUER_URL=https://YOUR-AUTH0-DOMAIN/
+    OAUTH_AUDIENCE=https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
+    OAUTH_RESOURCE_URL=https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
+    OAUTH_REQUIRED_SCOPE=mcp:access
+
+OAUTH_JWKS_URL can be omitted; the server derives Auth0's standard JWKS endpoint from the issuer.
+
+Do not configure the old MCP_AUTH_TOKENS secret for the OAuth deployment. The OAuth access token replaces the shared bearer secret.
+
+## Deploying the OAuth configuration
+
+After building and pushing the updated image, set the environment variables:
+
+    az containerapp update \
+      --name job-application-mcp \
+      --resource-group job-application-mcp-rg \
+      --set-env-vars \
+        "OAUTH_ISSUER_URL=https://YOUR-AUTH0-DOMAIN/" \
+        "OAUTH_AUDIENCE=https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp" \
+        "OAUTH_RESOURCE_URL=https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp" \
+        "OAUTH_REQUIRED_SCOPE=mcp:access"
+
+Verify the public metadata endpoint:
+
+    curl -i https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/.well-known/oauth-protected-resource/mcp
+
+It should return JSON describing the MCP resource and the Auth0 issuer.
+
+Verify unauthenticated MCP access:
+
+    curl -i https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
+
+It should return 401 Unauthorized and a WWW-Authenticate header pointing to the protected-resource metadata.
+
+## Connect Claude
+
+For Claude Pro/Max:
+
+1. Open Customize → Connectors.
+2. Click + → Add custom connector.
+3. Name it Job Application MCP.
+4. Enter the MCP URL:
+
+       https://job-application-mcp.happygrass-de5f577c.centralindia.azurecontainerapps.io/mcp
+
+5. Open Advanced settings.
+6. Enter the Auth0 Client ID and Client Secret from the Regular Web Application.
+7. Add the connector.
+8. Click Connect and complete the Auth0 Universal Login/consent flow.
+9. Enable the connector in a chat and test with:
+
+       Show my profile summary.
+
+Anthropic's current custom-connector documentation says custom remote MCP connectors use a public HTTPS endpoint and can accept OAuth client ID/secret in Advanced settings.
+
+## Security notes
+
+- Never paste an Auth0 Client Secret or access token into GitHub, chat, or source control.
+- The old static MCP bearer token should remain revoked/unused.
+- Auth0 API signing should remain RS256.
+- The MCP resource URL must exactly match the API Identifier and OAUTH_RESOURCE_URL.
