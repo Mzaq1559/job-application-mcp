@@ -48,9 +48,12 @@ def create_app():
         enable_dns_rebinding_protection=False,
     )
 
+    # Use the standard stateful Streamable HTTP/SSE transport for maximum
+    # compatibility with hosted MCP clients such as Claude Web. JSON-only
+    # responses and legacy stateless mode are optional SDK modes and can cause
+    # clients that expect the normal Streamable HTTP session flow to reject the
+    # endpoint even though the server itself is reachable.
     mcp_asgi_app = mcp.streamable_http_app(
-        json_response=True,
-        stateless_http=True,
         transport_security=transport_security,
     )
 
