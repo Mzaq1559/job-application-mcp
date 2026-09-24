@@ -1,12 +1,16 @@
-![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![License: Commercial](https://img.shields.io/badge/license-commercial-orange.svg)
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)
-![Status: pre-1.0](https://img.shields.io/badge/status-pre--1.0-orange.svg)
+![Version: 1.0.0](https://img.shields.io/badge/version-1.0.0-green.svg)
 
 # Job Application MCP
 
-A personal job-application assistant, exposed as a remote [MCP](https://modelcontextprotocol.io) server for AI clients that support MCP, currently documented around **Claude Web**. It manages your profile, resumes, job analysis, and application tracking. It does **not** scrape or automate any job platform — job descriptions are supplied by you (pasted or typed), and the final submission is always done by you, manually.
+A remote [MCP](https://modelcontextprotocol.io) server that turns an AI assistant into a structured job-application workspace. It manages your profile, resumes, job analysis, application tracking, and interview history, with **Claude Web** as the primary documented client.
 
-> **Status:** the core server is implemented and deployed to Azure Container Apps (21 MCP tools, Streamable HTTP, OAuth 2.1 resource-server authentication, Docker, GitHub Actions CI/CD, and Auth0 integration). The public deployment is configured for Claude Web custom connectors.
+The project is designed as a serious, extensible platform rather than a one-off personal script. The core repository is source-available for learning and contribution, while **commercial use, hosted use, and use inside paid products require a separate commercial license**. See [LICENSE](LICENSE).
+
+It does **not** scrape or automate any job platform — job descriptions are supplied by the user (pasted or typed), and the final submission is always done by the user, manually.
+
+> **v1.0.0:** the core server is implemented and deployed to Azure Container Apps with 21 MCP tools, Streamable HTTP, OAuth 2.1 resource-server authentication, Docker, GitHub Actions CI/CD, and Auth0 integration. The public deployment is configured for Claude Web custom connectors.
 
 ## Table of contents
 
@@ -45,21 +49,44 @@ Platforms like LinkedIn explicitly prohibit automated scraping and bot-driven ac
 
 ## Architecture
 
-```text
-Claude Web
-    │  MCP over Streamable HTTP (OAuth 2.1 bearer access token)
-    ▼
-Remote MCP Server (Starlette + official `mcp` v2.x SDK)
-    │
-    ├── OAuth 2.1 Resource Server → Auth0 (JWT/JWKS verification, scope: mcp:access)
-    │
-    ├── Profile Service
-    ├── Resume/CV Service        (upload, versioning, text extraction, keyword-based selection)
-    ├── Job Service               (create, duplicate detection, transparent keyword analysis)
-    ├── Application Service       (create, status workflow, duplicate rejection, event history)
-    ├── Interview Service
-    └── Database (SQLAlchemy async — SQLite in dev, PostgreSQL in prod)
+The system is split into transport/authentication, MCP tools, business services, persistence, and external identity infrastructure so new clients and features can be added without rewriting the core domain logic.
+
+```mermaid
+flowchart TB
+    CLIENT["AI Client<br/>Claude Web / MCP Client"]
+    CLIENT -->|"Streamable HTTP + OAuth 2.1"| SERVER["Remote MCP Server<br/>Starlette + MCP SDK"]
+
+    SERVER --> AUTH["OAuth 2.1 Resource Server<br/>JWT/JWKS validation"]
+    AUTH --> AUTH0["Auth0"]
+
+    SERVER --> TOOLS["MCP Tool Layer<br/>21 tools"]
+    TOOLS --> SERVICES["Application Services"]
+
+    SERVICES --> PROFILE["Profile Service"]
+    SERVICES --> RESUME["Resume / CV Service"]
+    SERVICES --> JOB["Job Service<br/>duplicate detection + analysis"]
+    SERVICES --> APP["Application Service<br/>pipeline + event history"]
+    SERVICES --> INTERVIEW["Interview Service"]
+
+    PROFILE --> DB["SQLAlchemy Async"]
+    RESUME --> DB
+    JOB --> DB
+    APP --> DB
+    INTERVIEW --> DB
+
+    DB --> SQLITE["SQLite<br/>development"]
+    DB --> POSTGRES["PostgreSQL<br/>production"]
+
+    SERVER --> FILES["Resume File Storage"]
 ```
+
+### Design principles
+
+- **AI-client agnostic:** MCP is the interface; Claude Web is the first documented client, not a hard dependency of the domain layer.
+- **User-controlled applications:** the server prepares and tracks applications but never submits them to third-party job platforms.
+- **Transparent analysis:** current job/resume matching is deliberately inspectable keyword-based logic rather than an opaque hiring score.
+- **Authentication at the edge:** OAuth 2.1 protects the remote MCP endpoint while application services remain focused on business logic.
+- **Extensible domain services:** contributors can add deeper AI analysis, cover-letter generation, integrations, migrations, durable storage, and other capabilities without replacing the existing architecture.
 
 ## MCP tools
 
@@ -235,8 +262,12 @@ Once connected, things like:
 
 ## Contributing
 
-This started as a personal project, but issues and PRs are welcome — especially around the AI-assisted analysis layer, Alembic migrations, or additional ATS-adjacent tooling that doesn't involve scraping or unauthorized automation.
+This started as a personal project, but issues and PRs are welcome. Contributions are especially useful around the AI-assisted analysis layer, Alembic migrations, integrations, durable storage, testing, observability, and additional ATS-adjacent tooling that does not involve scraping or unauthorized automation.
+
+If you want to build on this project commercially, host it for customers, or include it in a paid product, contact the maintainer for commercial licensing.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+This project is **source-available, not open-source under an OSI-approved license**. Personal evaluation, learning, and non-commercial contribution are permitted under the project license. Commercial use, hosted/SaaS use, and inclusion in paid products require a separate commercial license.
+
+See [LICENSE](LICENSE) for the full terms.
