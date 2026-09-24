@@ -14,7 +14,7 @@ def test_build_auth_settings_uses_mcp_resource():
     assert str(settings.issuer_url).rstrip("/") == "https://example.us.auth0.com"
     assert str(settings.resource_server_url) == "https://example.com/mcp"
     assert settings.required_scopes == ["mcp:access"]
-    assert settings.validate_token_resource is True
+    assert settings.validate_token_resource is False
 
 
 @pytest.mark.asyncio

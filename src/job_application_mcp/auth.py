@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 from typing import Any
 
@@ -12,6 +13,8 @@ import jwt
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
 from pydantic import AnyHttpUrl
+
+logger = logging.getLogger(__name__)
 
 
 class Auth0TokenVerifier(TokenVerifier):
@@ -26,7 +29,7 @@ class Auth0TokenVerifier(TokenVerifier):
         cache_ttl_seconds: int = 600,
     ) -> None:
         self.issuer_url = issuer_url.rstrip("/") + "/"
-        self.audience = audience
+        self.audience = audience.rstrip("/")
         self.jwks_url = jwks_url or f"{self.issuer_url}.well-known/jwks.json"
         self.cache_ttl_seconds = cache_ttl_seconds
         self._jwks: dict[str, dict[str, Any]] | None = None
@@ -64,7 +67,7 @@ class Auth0TokenVerifier(TokenVerifier):
         try:
             header = jwt.get_unverified_header(token)
             if header.get("alg") != "RS256" or not header.get("kid"):
-                return None
+                raise ValueError("token is not an RS256 JWT")
 
             jwks = await self._get_jwks()
             jwk = jwks.get(header["kid"])
@@ -73,7 +76,7 @@ class Auth0TokenVerifier(TokenVerifier):
                 jwks = await self._get_jwks()
                 jwk = jwks.get(header["kid"])
                 if jwk is None:
-                    return None
+                    raise ValueError("signing key not found in Auth0 JWKS")
 
             key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(jwk))
             claims = jwt.decode(
@@ -82,14 +85,29 @@ class Auth0TokenVerifier(TokenVerifier):
                 algorithms=["RS256"],
                 audience=self.audience,
                 issuer=self.issuer_url,
+                leeway=30,
                 options={"require": ["exp", "iat", "sub"]},
             )
+
+            raw_audience = claims.get("aud")
+            audiences = (
+                [raw_audience]
+                if isinstance(raw_audience, str)
+                else raw_audience
+                if isinstance(raw_audience, list)
+                else []
+            )
+            normalized_audiences = {str(item).rstrip("/") for item in audiences}
+            if self.audience.rstrip("/") not in normalized_audiences:
+                raise ValueError("access token audience does not match MCP audience")
+
             scope_claim = claims.get("scope", "")
             scopes = scope_claim.split() if isinstance(scope_claim, str) else []
             if not scopes:
                 permissions_claim = claims.get("permissions", [])
                 if isinstance(permissions_claim, list):
                     scopes = [item for item in permissions_claim if isinstance(item, str)]
+
             return AccessToken(
                 token=token,
                 client_id=str(claims.get("azp") or claims.get("client_id") or ""),
@@ -105,7 +123,9 @@ class Auth0TokenVerifier(TokenVerifier):
             KeyError,
             TypeError,
             httpx.HTTPError,
-        ):
+        ) as exc:
+            # Never log the bearer token. Exception type/message is enough to diagnose failures.
+            logger.warning("Auth0 access token rejected: %s: %s", type(exc).__name__, exc)
             return None
 
 
@@ -119,5 +139,7 @@ def build_auth_settings(
         issuer_url=AnyHttpUrl(issuer_url),
         resource_server_url=AnyHttpUrl(resource_url),
         required_scopes=[required_scope],
-        validate_token_resource=True,
+        # Auth0 validates the API identifier as the JWT audience above. Avoid a
+        # second SDK comparison between the Auth0 audience and RFC 8707 resource URL.
+        validate_token_resource=False,
     )
