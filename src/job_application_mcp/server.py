@@ -38,11 +38,14 @@ def create_app():
     # OAuth (auth / token_verifier) is configured on the MCPServer instance
     # itself in mcp_app.py — this SDK version's streamable_http_app() only
     # accepts transport-level options, not auth.
+    # Azure Container Apps terminates the public connection before forwarding
+    # it to this container. The MCP endpoint is already protected by the
+    # OAuth bearer-token middleware, so SDK Host-header DNS-rebinding checks
+    # are not useful at this public edge and were rejecting Azure's forwarded
+    # Host header with HTTP 421. Disable only this SDK-level check; OAuth
+    # authentication remains enforced by MCPServer.
     transport_security = TransportSecuritySettings(
-        allowed_hosts=[
-            "job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io",
-            "job-application-mcp.happygrass-de5f577c5.centralindia.azurecontainerapps.io:*",
-        ],
+        enable_dns_rebinding_protection=False,
     )
 
     mcp_asgi_app = mcp.streamable_http_app(
