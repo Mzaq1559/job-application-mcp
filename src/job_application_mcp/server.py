@@ -6,7 +6,6 @@ import contextlib
 import logging
 
 import uvicorn
-from mcp.server.transport_security import TransportSecuritySettings
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
