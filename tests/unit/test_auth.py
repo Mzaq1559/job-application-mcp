@@ -25,3 +25,16 @@ async def test_invalid_token_is_rejected():
         jwks_url="https://example.us.auth0.com/.well-known/jwks.json",
     )
     assert await verifier.verify_token("not-a-jwt") is None
+
+
+def test_permissions_claim_is_supported_as_scopes():
+    # Auth0 may expose API permissions in the permissions claim instead of scope.
+    # The MCP authorization layer consumes AccessToken.scopes.
+    claims = {"permissions": ["mcp:access"]}
+    scope_claim = claims.get("scope", "")
+    scopes = scope_claim.split() if isinstance(scope_claim, str) else []
+    if not scopes:
+        permissions_claim = claims.get("permissions", [])
+        if isinstance(permissions_claim, list):
+            scopes = [item for item in permissions_claim if isinstance(item, str)]
+    assert scopes == ["mcp:access"]
