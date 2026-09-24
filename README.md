@@ -4,9 +4,9 @@
 
 # Job Application MCP
 
-A personal job-application assistant, exposed as a remote [MCP](https://modelcontextprotocol.io) server for **Claude Web**. It manages your profile, resumes, job analysis, and application tracking. It does **not** scrape or automate any job platform — job descriptions are supplied by you (pasted or typed), and the final submission is always done by you, manually.
+A personal job-application assistant, exposed as a remote [MCP](https://modelcontextprotocol.io) server for AI clients that support MCP, currently documented around **Claude Web**. It manages your profile, resumes, job analysis, and application tracking. It does **not** scrape or automate any job platform — job descriptions are supplied by you (pasted or typed), and the final submission is always done by you, manually.
 
-> **Status:** the core server is implemented and verified end-to-end (21 MCP tools, Streamable HTTP, OAuth 2.1 resource-server authentication, Docker build, and CI). The repository is prepared for Azure Container Apps and Claude Web custom connectors.
+> **Status:** the core server is implemented and deployed to Azure Container Apps (21 MCP tools, Streamable HTTP, OAuth 2.1 resource-server authentication, Docker, GitHub Actions CI/CD, and Auth0 integration). The public deployment is configured for Claude Web custom connectors.
 
 ## Table of contents
 
@@ -47,11 +47,11 @@ Platforms like LinkedIn explicitly prohibit automated scraping and bot-driven ac
 
 ```text
 Claude Web
-    │  MCP over Streamable HTTP (bearer auth)
+    │  MCP over Streamable HTTP (OAuth 2.1 bearer access token)
     ▼
 Remote MCP Server (Starlette + official `mcp` v2.x SDK)
     │
-    ├── OAuth 2.1 Resource Server → Auth0 (JWT/JWKS verification)
+    ├── OAuth 2.1 Resource Server → Auth0 (JWT/JWKS verification, scope: mcp:access)
     │
     ├── Profile Service
     ├── Resume/CV Service        (upload, versioning, text extraction, keyword-based selection)
@@ -114,6 +114,7 @@ cp .env.example .env
 # edit .env: at minimum, set MCP_AUTH_TOKENS to a random secret
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 
+# For local development, configure the OAuth variables in .env
 python -m job_application_mcp.server
 ```
 
@@ -126,7 +127,7 @@ curl http://localhost:8000/health
 
 ## Environment variables
 
-See [`.env.example`](.env.example) for the full, current list. The essentials:
+See [`.env.example`](.env.example) for the full, current list. The essentials for the deployed OAuth configuration are:
 
 | Variable | Purpose | Default |
 |---|---|---|
@@ -158,13 +159,13 @@ ruff check .        # lint
 docker compose up --build
 ```
 
-This starts the app plus a PostgreSQL container. Set a real `MCP_AUTH_TOKENS` value in `docker-compose.yml` (or via an env file) before using it for anything beyond local testing — the checked-in value is a placeholder.
+This starts the app plus a PostgreSQL container. The compose file is intended for local development; configure the OAuth variables in your local `.env` when testing authenticated MCP requests.
 
 To build and run standalone (SQLite, no Postgres container):
 
 ```bash
 docker build -t job-application-mcp .
-docker run -p 8000:8000 -e MCP_AUTH_TOKENS=your-secret-here job-application-mcp
+docker run -p 8000:8000 job-application-mcp
 ```
 
 ## Deployment
@@ -175,24 +176,19 @@ Any platform that runs a long-lived container works — the server just needs a 
 - **Azure Container Apps** — a good fit if you have Azure for Students credit; deploy the same `Dockerfile` via `az containerapp up` or the portal's "deploy from GitHub" flow.
 - **Fly.io** — `fly launch` against this repo's `Dockerfile`.
 
-Whichever you use, at minimum set:
+For the current Azure deployment, configure the OAuth environment variables shown above. Do not add an Auth0 client secret to the repository or GitHub Actions. Azure stores deployment configuration separately from source control.
 
-```text
-DATABASE_URL=<sqlite path on a persistent volume, or a managed Postgres URL>
-MCP_AUTH_TOKENS=<a long random secret — generate with secrets.token_urlsafe(32)>
-```
-
-A step-by-step guide for one specific platform will land in `docs/deployment.md`.
+The production deployment currently runs on Azure Container Apps. GitHub Actions builds the Docker image, pushes it to Azure Container Registry, updates the Container App to the exact Git SHA image, and verifies `/health` after deployment.
 
 ## Connecting to Claude Web
 
-Once deployed, add it in Claude Web as a **custom remote MCP connector**, pointing at:
+Once deployed, add it in Claude Web as a **custom remote MCP connector**, pointing at the public `/mcp` endpoint:
 
 ```text
 https://<your-deployed-domain>/mcp
 ```
 
-Authentication is OAuth 2.1 through Auth0; Claude signs in through the OAuth authorization flow rather than receiving a shared bearer secret. See [`docs/claude-web.md`](docs/claude-web.md) for the Auth0 setup and Claude callback configuration.
+Authentication is OAuth 2.1 through Auth0; Claude signs in through the OAuth authorization flow rather than receiving a shared bearer secret. The Auth0 API requires the `mcp:access` scope. The Claude Web application uses the callback `https://claude.ai/api/mcp/auth_callback`. See [`docs/claude-web.md`](docs/claude-web.md) for the setup details.
 
 ## Example prompts
 
@@ -227,12 +223,13 @@ Once connected, things like:
 - [x] MCP server + tools, verified end-to-end over HTTP (health check, bearer auth, `initialize`, `tools/list`)
 - [x] Unit tests (16 passing) + clean `ruff` lint
 - [x] Docker + docker-compose, verified with a production-equivalent install and boot
-- [x] CI (GitHub Actions for lint + tests)
+- [x] CI/CD (GitHub Actions for lint + tests + Docker build/push + Azure deployment)
+- [x] Public Azure Container Apps deployment
 - [ ] Alembic migrations
 - [ ] AI provider abstraction + prompts (no-fabrication rules) for deeper job analysis and cover-letter generation
 - [ ] Integration tests against the running HTTP server
 - [x] Azure Container Apps deployment documentation
-- [ ] Public Azure deployment
+- [x] Public Azure deployment
 - [x] OAuth 2.1 resource-server authentication for Claude Web
 - [ ] Durable resume-file storage
 
