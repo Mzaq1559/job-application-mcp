@@ -34,27 +34,8 @@ async def ready(request: Request) -> JSONResponse:
 
 
 def create_app():
-    # OAuth (auth / token_verifier) is configured on the MCPServer instance
-    # itself in mcp_app.py — this SDK version's streamable_http_app() only
-    # accepts transport-level options, not auth.
-    # Azure Container Apps terminates the public connection before forwarding
-    # it to this container. The MCP endpoint is already protected by the
-    # OAuth bearer-token middleware, so SDK Host-header DNS-rebinding checks
-    # are not useful at this public edge and were rejecting Azure's forwarded
-    # Host header with HTTP 421. Disable only this SDK-level check; OAuth
-    # authentication remains enforced by MCPServer.
-    transport_security = TransportSecuritySettings(
-        enable_dns_rebinding_protection=False,
-    )
-
-    # Use the standard stateful Streamable HTTP/SSE transport for maximum
-    # compatibility with hosted MCP clients such as Claude Web. JSON-only
-    # responses and legacy stateless mode are optional SDK modes and can cause
-    # clients that expect the normal Streamable HTTP session flow to reject the
-    # endpoint even though the server itself is reachable.
-    mcp_asgi_app = mcp.streamable_http_app(
-        transport_security=transport_security,
-    )
+    # Exact transport configuration from the last known-working OAuth commit 26006eb.
+    mcp_asgi_app = mcp.streamable_http_app(json_response=True, stateless_http=True)
 
     original_lifespan = mcp_asgi_app.router.lifespan_context
 
