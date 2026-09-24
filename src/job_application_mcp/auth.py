@@ -86,6 +86,10 @@ class Auth0TokenVerifier(TokenVerifier):
             )
             scope_claim = claims.get("scope", "")
             scopes = scope_claim.split() if isinstance(scope_claim, str) else []
+            if not scopes:
+                permissions_claim = claims.get("permissions", [])
+                if isinstance(permissions_claim, list):
+                    scopes = [item for item in permissions_claim if isinstance(item, str)]
             return AccessToken(
                 token=token,
                 client_id=str(claims.get("azp") or claims.get("client_id") or ""),
