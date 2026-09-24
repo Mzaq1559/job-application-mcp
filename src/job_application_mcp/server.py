@@ -8,6 +8,7 @@ import logging
 import uvicorn
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from mcp.server.transport_security import TransportSecuritySettings
 
 from job_application_mcp.config.settings import get_settings
 from job_application_mcp.database.database import init_db
